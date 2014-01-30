@@ -28,6 +28,8 @@ time = lens _time (\t g -> g { _time = t})
 data Entity a = Entity
     { _xCoord :: Float
     , _yCoord :: Float
+    , _xDelta :: Float
+    , _yDelta :: Float
     , _character :: a
     } deriving (Show, Eq)
 
@@ -36,6 +38,12 @@ xCoord = lens _xCoord (\x g -> g { _xCoord = x})
 
 yCoord :: Lens (Entity a) Float
 yCoord = lens _yCoord (\y g -> g { _yCoord = y})
+
+xDelta :: Lens (Entity a) Float
+xDelta = lens _xDelta (\dx g -> g { _xDelta = dx})
+
+yDelta :: Lens (Entity a) Float
+yDelta = lens _yDelta (\dy g -> g { _yDelta = dy})
 
 character :: Lens (Entity a) a
 character = lens _character (\c g -> g { _character = c})

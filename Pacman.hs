@@ -2,85 +2,70 @@ module Pacman where
 
 import Pacman.Data
 
-import Control.Monad
 import Data.Lens.Common
+import qualified Data.Map as M
+import Data.Maybe
 import Graphics.Gloss
-import System.Random
+import Graphics.Gloss.Interface.Pure.Game
 
 initGame :: Game
-initGame = Game (Entity 0 0 Pacman) [] [] 0 0
+initGame = Game (Entity 0 0 0 0 Pacman) [] [] 0 0
 
 run :: IO ()
 run = play
-        (InWindow "Pacman" (200, 200) (200, 200))
+        {-(InWindow "Pacman" (200, 200) (500, 500))-}
+        (FullScreen (0,0))
         black
-        30
+        22
         initGame
         render
-        (const id)
-        (const id)
+        handleInput
+        step
 
 render :: Game -> Picture
-render game = Color yellow (Translate (p ^. xCoord) (p ^. yCoord) (circleSolid 20))
+render game = Color yellow
+    $ Translate (p ^. xCoord) (p ^. yCoord)
+    $ circleSolid 20
     where p = game ^. player
 
-{-renderGame :: Game -> IO ()-}
-{-renderGame game = renderPacman pacman-}
-    {-where-}
-        {-pacman = game ^. player-}
+step :: Float -> Game -> Game
+step t = player ^%= move t
 
-{-gl :: Float -> GLfloat-}
-{-gl = realToFrac-}
+move :: Float -> Entity a -> Entity a
+move t e = (xCoord ^+= (e ^. xDelta * t))
+    . (yCoord ^+= (e ^. yDelta * t)) $ e
 
-{-color3 :: Float -> Float -> Float -> IO ()-}
-{-color3 r g b = color $ Color3 (gl r) (gl g) (gl b)-}
+handleInput :: Event -> Game -> Game
+handleInput (EventKey (Char c) Down _ _) = lookupChar c
+handleInput _ = id
 
-{-renderPacman :: Entity Pacman -> IO ()-}
-{-renderPacman (Entity x y p) = preservingColor $ do-}
-    {-color3 1 1 0-}
-    {-circle x y 0.1-}
+lookupChar :: Char -> Game -> Game
+lookupChar c = fromMaybe id . M.lookup c $ charMap
+    where
+        charMap = M.fromList
+            [ ('h', player ^%= moveLeft)
+            , ('l', player ^%= moveRight)
+            , ('j', player ^%= moveDown)
+            , ('k', player ^%= moveUp)
+            ]
 
-{-renderPoints :: [(Float, Float)] -> IO ()-}
-{-renderPoints = mapM_ (\(x, y) -> vertex $ Vertex2 (gl x) (gl y))-}
+speed :: Float
+speed = 200
 
-{-circle :: Float -> Float -> Float -> IO ()-}
-{-circle x y r = renderPrimitive TriangleFan $ renderPoints circular-}
-    {-where-}
-        {-circular = map (\t -> (x+r*cos (t), y+r*sin (t))) [0,0.2..(2*pi)]-}
+moveLeft :: Entity a -> Entity a
+moveLeft = stopVert . (xDelta ^= (-speed))
 
-{-preservingColor :: IO a -> IO a-}
-{-preservingColor am = do-}
-    {-c <- get currentColor-}
-    {-a <- am-}
-    {-currentColor $= c-}
-    {-return a-}
+moveRight :: Entity a -> Entity a
+moveRight = stopVert . (xDelta ^= speed)
 
-{-mkTriangle :: (GLfloat, GLfloat) -> [Vertex2 GLfloat]-}
-{-mkTriangle (x, y) = [Vertex2 x y, Vertex2 (x - 0.01) y, Vertex2 x (y - 0.01)]-}
+stopVert :: Entity a -> Entity a
+stopVert = yDelta ^= 0
 
-{-handleInput :: IORef Game -> KeyboardCallback-}
-{-handleInput gameRef 'h' _ = modifyIORef gameRef moveLeft >> display gameRef-}
-{-handleInput gameRef 'l' _ = modifyIORef gameRef moveRight >> display gameRef-}
-{-handleInput gameRef 'j' _ = modifyIORef gameRef moveDown >> display gameRef-}
-{-handleInput gameRef 'k' _ = modifyIORef gameRef moveUp >> display gameRef-}
-{-handleInput gameRef 'q' _ = do-}
-    {-mw <- get currentWindow-}
-    {-case mw of-}
-        {-Just w -> destroyWindow w-}
-        {-Nothing -> putStrLn "No current window!"-}
-{-handleInput gameRef c _ = putStrLn [c]-}
+moveUp :: Entity a -> Entity a
+moveUp = stopHorz . (yDelta ^= speed)
 
-{-speed :: Float-}
-{-speed = 0.01-}
+moveDown :: Entity a -> Entity a
+moveDown = stopHorz . (yDelta ^= (-speed))
 
-{-moveLeft :: Game -> Game-}
-{-moveLeft = player ^%= (xCoord ^-= speed)-}
-
-{-moveRight :: Game -> Game-}
-{-moveRight = player ^%= (xCoord ^+= speed)-}
-
-{-moveUp :: Game -> Game-}
-{-moveUp = player ^%= (yCoord ^+= speed)-}
-
-{-moveDown :: Game -> Game-}
-{-moveDown = player ^%= (yCoord ^-= speed)-}
+stopHorz :: Entity a -> Entity a
+stopHorz = xDelta ^= 0
