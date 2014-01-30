@@ -1,8 +1,20 @@
 module Pacman.Maze where
 
 import Data.Lens.Common
+import qualified Data.Map as M
 
-newtype Maze = Maze { cells :: [[Cell]] } deriving Show
+newtype Point = Point (Int, Int) deriving (Show, Eq, Ord)
+
+px :: Lens Point Int
+px = lens (\(Point (x,_)) -> x) (\x (Point (_, y)) -> Point (x, y))
+
+py :: Lens Point Int
+py = lens (\(Point (_,y)) -> y) (\y (Point (x, _)) -> Point (x, y))
+
+newtype Maze = Maze { _cells :: M.Map Point Cell} deriving Show
+
+cells :: Lens Maze (M.Map Point Cell)
+cells = lens _cells (\mpc m -> Maze mpc)
 
 newtype Wall = Wall { isWalled :: Bool } deriving Show
 
@@ -36,7 +48,9 @@ emptyCell :: Cell
 emptyCell = Cell unWalled unWalled unWalled unWalled False
 
 emptyMaze :: Int -> Int -> Maze
-emptyMaze c r = Maze . replicate r . replicate c $ emptyCell
+emptyMaze c r = Maze . M.fromList . zip points . repeat $ emptyCell
+    where
+        points = fmap Point [(x, y) | x <- [0..c], y <- [0..r]]
 
 addWall :: Lens Cell Wall -> Cell -> Cell
 addWall l = l ^= walled
