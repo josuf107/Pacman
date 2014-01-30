@@ -36,11 +36,11 @@ move t e = (xCoord ^+= (e ^. xDelta * t))
     . (yCoord ^+= (e ^. yDelta * t)) $ e
 
 handleInput :: Event -> Game -> Game
-handleInput (EventKey (Char c) Down _ _) = lookupChar c
+handleInput (EventKey (Char c) Down _ _) = handleChar c
 handleInput _ = id
 
-lookupChar :: Char -> Game -> Game
-lookupChar c = fromMaybe id . M.lookup c $ charMap
+handleChar :: Char -> Game -> Game
+handleChar c = fromMaybe id . M.lookup c $ charMap
     where
         charMap = M.fromList
             [ ('h', player ^%= moveBack xDelta)
