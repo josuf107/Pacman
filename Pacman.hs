@@ -43,29 +43,20 @@ lookupChar :: Char -> Game -> Game
 lookupChar c = fromMaybe id . M.lookup c $ charMap
     where
         charMap = M.fromList
-            [ ('h', player ^%= moveLeft)
-            , ('l', player ^%= moveRight)
-            , ('j', player ^%= moveDown)
-            , ('k', player ^%= moveUp)
+            [ ('h', player ^%= moveBack xDelta)
+            , ('l', player ^%= moveFore xDelta)
+            , ('j', player ^%= moveBack yDelta)
+            , ('k', player ^%= moveFore yDelta)
             ]
 
 speed :: Float
 speed = 200
 
-moveLeft :: Entity a -> Entity a
-moveLeft = stopVert . (xDelta ^= (-speed))
+moveFore :: Lens (Entity a) Float -> Entity a -> Entity a
+moveFore l = (l ^= speed) . stop
 
-moveRight :: Entity a -> Entity a
-moveRight = stopVert . (xDelta ^= speed)
+moveBack :: Lens (Entity a) Float -> Entity a -> Entity a
+moveBack l = (l ^= (-speed)) . stop
 
-stopVert :: Entity a -> Entity a
-stopVert = yDelta ^= 0
-
-moveUp :: Entity a -> Entity a
-moveUp = stopHorz . (yDelta ^= speed)
-
-moveDown :: Entity a -> Entity a
-moveDown = stopHorz . (yDelta ^= (-speed))
-
-stopHorz :: Entity a -> Entity a
-stopHorz = xDelta ^= 0
+stop :: Entity a -> Entity a
+stop = (yDelta ^= 0) . (xDelta ^= 0)
