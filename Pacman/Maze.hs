@@ -1,4 +1,4 @@
-module Pacman.Maze2 where
+module Pacman.Maze where
 
 import Data.Function
 import qualified Data.List as L
