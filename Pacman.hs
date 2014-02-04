@@ -1,6 +1,7 @@
 module Pacman where
 
 import Pacman.Data
+import qualified Pacman.Maze as Maze
 
 import Data.Lens.Common
 import qualified Data.Map as M
@@ -9,7 +10,7 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 
 initGame :: Game
-initGame = Game (Entity 0 0 0 0 Pacman) [] [] 0 0
+initGame = Game (Entity 0 0 0 0 Pacman) [] [] (Maze.emptyMaze 20 20) 0 0
 
 run :: IO ()
 run = play

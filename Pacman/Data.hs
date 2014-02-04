@@ -1,11 +1,14 @@
 module Pacman.Data where
 
+import Pacman.Maze
+
 import Data.Lens.Common
 
 data Game = Game
     { _player :: Entity Pacman
     , _ghosts :: [Entity Ghost]
     , _gold :: [Gold]
+    , _maze :: Maze
     , _score :: Int
     , _time :: Int
     } deriving (Show, Eq)
@@ -18,6 +21,9 @@ ghosts = lens _ghosts (\gs g -> g { _ghosts = gs})
 
 gold :: Lens Game [Gold]
 gold = lens _gold (\gld g -> g { _gold = gld})
+
+maze :: Lens Game Maze
+maze = lens _maze (\m g -> g { _maze = m})
 
 score :: Lens Game Int
 score = lens _score (\s g -> g { _score = s})
