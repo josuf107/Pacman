@@ -1,4 +1,4 @@
-module Pacman.Maze where
+module Pacman.OldMaze where
 
 import Control.Monad
 import Data.Function (on)
@@ -22,13 +22,13 @@ data Maze = Maze { _cells :: M.Map Point Cell
                  } deriving Show
 
 printMaze :: Maze -> String
-printMaze m = concat
-    . L.intercalate ["\n"]
-    . (fmap . fmap) (printCell . snd)
-    . fmap (L.sortBy (compare `on` ((^. px) . fst)))
-    . L.groupBy (\(p, _) (p', _) -> p ^. py == p' ^. py)
-    . L.sortBy (compare `on` ((^. py) . fst))
-    $ M.toAscList (m ^. cells)
+printMaze m = L.intercalate "\n" -- newlines between rows
+    . fmap (concat -- join cells in each row
+        . fmap (printCell . snd) -- print cells
+        . L.sortBy (compare `on` ((^. px) . fst))) -- sort each row by column
+    . L.groupBy (\(p, _) (p', _) -> p ^. py == p' ^. py) -- group by row
+    . L.sortBy (compare `on` ((^. py) . fst)) -- sort by row
+    $ M.toAscList (m ^. cells) -- get [(Point, Cell)] list
 
 printCell :: Cell -> String
 printCell c = first ++ second ++ third
@@ -112,12 +112,20 @@ fullMaze c r = (cells ^= cellMap) (emptyMaze c r)
         points = fmap Point [(x, y) | x <- [0..c], y <- [0..r]]
         cellMap = M.fromList . zip points . repeat $ fullCell
 
+data MazeWalker g = MazeWalker
+    { maze :: Maze
+    , position :: Point
+    , dir :: Direction
+    , gen :: g
+    , step :: MazeWalker g -> MazeWalker g
+    }
+
 randomMaze :: RandomGen g => g -> Int -> Int -> Maze
 randomMaze g c r = randomWalk g (Point (0, 0)) (fullMaze c r)
 
 randomWalk :: RandomGen g => g -> Point -> Maze -> Maze
 randomWalk g p m =
-    if checkMaze m || s == 0 then m
+    if checkMaze m then m
     else
         let mnext = do
             c <- M.lookup p (m ^. cells)
@@ -128,7 +136,7 @@ randomWalk g p m =
             case mnext of
                 Just (next, g') -> randomWalk g'
                     (move next p)
-                    ((knockdown (move next p) (opposite next)) . knockdown p next $ m)
+                    (knockdown (move next p) (opposite next) . knockdown p next $ m)
                 Nothing -> error "yer dumb"
     where
         (walled, unWalled) = available p m
