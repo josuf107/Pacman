@@ -37,8 +37,9 @@ render game = Pictures [Color yellow
     where p = game ^. player
 
 renderMaze :: Maze.Maze -> Picture
-renderMaze m = 
+renderMaze m =
     Scale 50 50
+    . Translate (fromIntegral (Maze.width m) / (-2)) (fromIntegral (Maze.height m) / (-2))
     . Color white
     . Pictures
     . zipWith (Translate 0) [0..]
@@ -56,19 +57,28 @@ renderMaze m =
             . L.sortBy (compare `on` f)
 
 renderCell :: Maze.Maze -> Maze.Point -> Picture
-renderCell m p =
-    case (neighbor Maze.South, neighbor Maze.East) of
-        (True, True) -> Pictures [bottom, wall]
-        (True, False) -> Pictures [bottom]
-        (False, True) -> Pictures [wall]
-        (False, False) -> Blank
+renderCell m p = Pictures $
+    (case (neighbor Maze.South, neighbor Maze.East) of
+        (True, True) -> [bottom, right]
+        (True, False) -> [bottom]
+        (False, True) -> [right]
+        (False, False) -> [])
+    ++ [left | fst p == 0]
+    ++ [right | fst p == (Maze.width m - 1)]
+    ++ [bottom | snd p == 0]
+    ++ [top | snd p == (Maze.height m - 1)]
+    ++ [Polygon [(0,0),(0,1),(1,1),(1,0)] | Maze.numWalls m p == 4]
     where
         neighbor :: Maze.Direction -> Bool
         neighbor d = Maze.hasWall p (Maze.relativePoint d p) m
         bottom :: Picture
         bottom = Line [(0,0), (1,0)]
-        wall :: Picture
-        wall = Line [(1,0), (1,1)]
+        right :: Picture
+        right = Line [(1,0), (1,1)]
+        left :: Picture
+        left = Line [(0,0), (0,1)]
+        top :: Picture
+        top = Line [(0,1), (1,1)]
 
 step :: Float -> Game -> Game
 step t = player ^%= move t
