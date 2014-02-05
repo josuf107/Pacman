@@ -3,31 +3,72 @@ module Pacman where
 import Pacman.Data
 import qualified Pacman.Maze as Maze
 
+import Data.Function
 import Data.Lens.Common
+import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Maybe
+import qualified Data.Set as S
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+import System.Random
 
 initGame :: Game
-initGame = Game (Entity 0 0 0 0 Pacman) [] [] (Maze.emptyMaze 20 20) 0 0
+initGame = Game (Entity 0 0 0 0 Pacman) [] [] (Maze.fullMaze 10 10) 0 0
 
 run :: IO ()
-run = play
+run = do
+    g <- newStdGen
+    play
         {-(InWindow "Pacman" (200, 200) (500, 500))-}
         (FullScreen (0,0))
         black
         22
-        initGame
+        (maze ^%= Maze.walkMaze (Maze.mazeGouger g 1.8) $ initGame)
         render
         handleInput
         step
 
 render :: Game -> Picture
-render game = Color yellow
+render game = Pictures [Color yellow
     $ Translate (p ^. xCoord) (p ^. yCoord)
     $ circleSolid 20
+    , renderMaze $ game ^. maze]
     where p = game ^. player
+
+renderMaze :: Maze.Maze -> Picture
+renderMaze m = 
+    Scale 50 50
+    . Color white
+    . Pictures
+    . zipWith (Translate 0) [0..]
+    . fmap ( Pictures
+        . zipWith (\x p -> Translate x 0 p) [0..]
+        . fmap (renderCell m)
+        . L.sortBy (compare `on` fst))
+    . unorderedGroupBy snd
+    . S.toAscList
+    . Maze.cells
+    $ m
+    where
+        unorderedGroupBy :: (Ord b, Eq b) => (a -> b) -> [a] -> [[a]]
+        unorderedGroupBy f = L.groupBy ((==) `on` f)
+            . L.sortBy (compare `on` f)
+
+renderCell :: Maze.Maze -> Maze.Point -> Picture
+renderCell m p =
+    case (neighbor Maze.South, neighbor Maze.East) of
+        (True, True) -> Pictures [bottom, wall]
+        (True, False) -> Pictures [bottom]
+        (False, True) -> Pictures [wall]
+        (False, False) -> Blank
+    where
+        neighbor :: Maze.Direction -> Bool
+        neighbor d = Maze.hasWall p (Maze.relativePoint d p) m
+        bottom :: Picture
+        bottom = Line [(0,0), (1,0)]
+        wall :: Picture
+        wall = Line [(1,0), (1,1)]
 
 step :: Float -> Game -> Game
 step t = player ^%= move t
