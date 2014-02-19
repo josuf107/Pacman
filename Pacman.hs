@@ -32,19 +32,20 @@ run = do
 render :: Game -> Picture
 render game = Pictures [Color yellow
     $ Translate (p ^. xCoord) (p ^. yCoord)
-    $ circleSolid 20
+    $ circleSolid 18
     , renderMaze $ game ^. maze]
     where p = game ^. player
 
 renderMaze :: Maze.Maze -> Picture
 renderMaze m =
-    Scale 50 50
-    . Translate (fromIntegral (Maze.width m) / (-2)) (fromIntegral (Maze.height m) / (-2))
+    Scale 40 40
+    . Translate (fromIntegral (Maze.width m) / (-2))
+        (fromIntegral (Maze.height m) / (-2))
     . Color white
     . Pictures
     . zipWith (Translate 0) [0..]
     . fmap ( Pictures
-        . zipWith (\x p -> Translate x 0 p) [0..]
+        . zipWith (flip Translate 0) [0..]
         . fmap (renderCell m)
         . L.sortBy (compare `on` fst))
     . unorderedGroupBy snd
