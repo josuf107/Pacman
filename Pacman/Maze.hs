@@ -1,6 +1,8 @@
 module Pacman.Maze where
 
+import Control.Applicative
 import Data.Function
+import Data.Monoid
 import qualified Data.List as L
 import qualified Data.Set as S
 import System.Random
@@ -49,10 +51,18 @@ emptyMaze mx my = Maze
     (mx + 1)
 
 fullMaze :: Int -> Int -> Maze
-fullMaze x y = walkMaze mazeFiller $ emptyMaze x y
+fullMaze x y = fill $ emptyMaze x y
+    where
+        fill :: Maze -> Maze
+        fill m =
+            (appEndo . mconcat . fmap Endo . concat
+            . fmap (\c -> addWall c <$> neighbors c)
+            . S.toList . cells
+            $ m) m
 
 addWall :: Point -> Point -> Maze -> Maze
-addWall p1 p2 m = if S.member p1 ps && S.member p2 ps
+addWall p1 p2 m =
+    if S.member p1 ps && S.member p2 ps && p1 `elem` neighbors p2
     then m { walls = S.insert (p2, p1) . S.insert (p1, p2) . walls $ m }
     else m
     where
@@ -80,71 +90,12 @@ hasWall p1 p2 m = S.member (p1, p2) ws
 hasCell :: Maze -> Point -> Bool
 hasCell m =  (`S.member` cells m)
 
-data MazeWalker s = MazeWalker
-    { point :: Point
-    , nexts :: MazeWalker s -> Maze -> [Point]
-    , step :: Point -> MazeWalker s -> Maze -> (MazeWalker s, Maze)
-    , state :: s
-    }
-
-walkMaze :: MazeWalker s -> Maze -> Maze
-walkMaze mw m =
-    case filter (m `hasCell`) (nexts mw mw m) of
-        (n:_) -> uncurry walkMaze (step mw n mw m)
-        _ -> m
-
-simpleWalker :: Point
-    -> (MazeWalker () -> Maze -> Maze)
-    -> (MazeWalker () -> Maze -> [Point])
-    -> MazeWalker ()
-simpleWalker p a ns = MazeWalker
-    p
-    ns
-    (\p' mw m -> (mw { point = p'}, a mw m))
-    ()
-
-mazeFiller :: MazeWalker ()
-mazeFiller = simpleWalker (0, 0) doFill getNexts
+gougedMaze :: RandomGen g => g -> Double -> Int -> Int -> Maze
+gougedMaze g r x y = gougeMaze g r South (0, 0) $ (fullMaze x y)
     where
-        doFill :: MazeWalker () -> Maze -> Maze
-        doFill mw =
-            let p@(x, y) = point mw in
-                addWall p (x + 1, y) . addWall p (x, y + 1)
-        getNexts :: MazeWalker () -> Maze -> [Point]
-        getNexts mw _ =
-            let (x, y) = point mw in
-                [(x + 1, y), (0, y + 1)]
-
-mazeGouger :: RandomGen g => g -> Double -> MazeWalker (Direction, g)
-mazeGouger gInitial r = MazeWalker
-    (0, 0)
-    getNexts
-    (\p mw m -> (doStep p m mw, doGouge p mw m))
-    (East, gInitial)
-    where
-        getNexts :: RandomGen g => MazeWalker (Direction, g)
-            -> Maze
-            -> [Point]
-        getNexts mw m =
-            let p = point mw
-                (d, g) = state mw
-                (ps, _) = nextState g d m p
-            in ps
-        doStep :: RandomGen g => Point
-            -> Maze
-            -> MazeWalker (Direction, g)
-            -> MazeWalker (Direction, g)
-        doStep p' m mw =
-            let p = point mw
-                (d, g) = state mw
-                (_, g') = nextState g d m p
-            in mw { point = p', state = (relativeDirection p p', g') }
-        nextState :: RandomGen g => g
-            -> Direction
-            -> Maze
-            -> Point
-            -> ([Point], g)
-        nextState g d m p = if wallRatio m <= r then ([], g)
+        gougeMaze :: RandomGen g => g -> Double -> Direction -> Point -> Maze -> Maze
+        gougeMaze g r d p m =
+            if wallRatio m <= r then m
             else
                 let
                     ns = L.intersect
@@ -152,10 +103,12 @@ mazeGouger gInitial r = MazeWalker
                         [d, d, d, North, South, East, West]
                 in
                 case pick g (L.permutations ns) of
-                    Just (d', g') -> (fmap (`relativePoint` p) d', g')
-                    Nothing -> error "Impossibru!"
-        doGouge :: Point -> MazeWalker (Direction, g) -> Maze -> Maze
-        doGouge p' mw = removeWall (point mw) p'
+                    Just ([], g') -> m
+                    Just ((d':_), g') -> gougeMaze
+                        g' r d'
+                        (relativePoint d' p)
+                        (removeWall p (relativePoint d' p) m)
+                    Nothing -> m
 
 wallRatio :: Maze -> Double
 wallRatio m = wallCount / (fromIntegral . S.size . cells $ m)
@@ -194,6 +147,7 @@ freeSpaces :: Maze -> Point -> [Direction]
 freeSpaces m p = fmap (uncurry relativeDirection)
     . filter (not . (\(p1, p2) -> hasWall p1 p2 m))
     . zip (repeat p)
+    . filter (`S.member` cells m)
     . neighbors
     $ p
 
