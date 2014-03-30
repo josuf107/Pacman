@@ -91,9 +91,10 @@ hasCell :: Maze -> Point -> Bool
 hasCell m =  (`S.member` cells m)
 
 gougedMaze :: RandomGen g => g -> Double -> Int -> Int -> Maze
-gougedMaze g r x y = gougeMaze g r South (0, 0) $ (fullMaze x y)
+gougedMaze g r x y = gougeMaze g r South (0, 0) (fullMaze x y)
     where
-        gougeMaze :: RandomGen g => g -> Double -> Direction -> Point -> Maze -> Maze
+        gougeMaze :: RandomGen g => g -> Double -> Direction -> Point
+            -> Maze -> Maze
         gougeMaze g r d p m =
             if wallRatio m <= r then m
             else
@@ -104,7 +105,7 @@ gougedMaze g r x y = gougeMaze g r South (0, 0) $ (fullMaze x y)
                 in
                 case pick g (L.permutations ns) of
                     Just ([], g') -> m
-                    Just ((d':_), g') -> gougeMaze
+                    Just (d':_, g') -> gougeMaze
                         g' r d'
                         (relativePoint d' p)
                         (removeWall p (relativePoint d' p) m)
