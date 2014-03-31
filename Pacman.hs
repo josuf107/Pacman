@@ -13,8 +13,8 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 
-initGame :: Game
-initGame = Game (Entity 0 0 0 0 Pacman) [] [] (Maze.fullMaze 10 10) 0 0
+initGame :: RandomGen g => g -> Game
+initGame g = Game (Entity 0 0 0 0 Pacman) [] [] (Maze.gougedMaze g 1.8 10 10) 0 0
 
 run :: IO ()
 run = do
@@ -24,7 +24,7 @@ run = do
         (FullScreen (0,0))
         black
         22
-        (maze ^%= Maze.walkMaze (Maze.mazeGouger g 1.8) $ initGame)
+        (initGame g)
         render
         handleInput
         step
