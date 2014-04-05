@@ -3,6 +3,7 @@ module Pacman where
 import Pacman.Data
 import qualified Pacman.Maze as Maze
 
+import Control.Applicative
 import Data.Function
 import Data.Lens.Common
 import qualified Data.List as L
@@ -43,7 +44,7 @@ renderMaze m =
         (fromIntegral (Maze.height m) / (-2))
     . Color white
     . Pictures
-    . zipWith (Translate 0) [0..]
+    . zipWith (Translate 0) (iterate pred . fromIntegral . Maze.height $ m)
     . fmap ( Pictures
         . zipWith (flip Translate 0) [0..]
         . fmap (renderCell m)
@@ -65,11 +66,18 @@ renderCell m p = Pictures $
         (False, True) -> [right]
         (False, False) -> [])
     ++ [left | fst p == 0]
-    ++ [right | fst p == (Maze.width m - 1)]
-    ++ [bottom | snd p == 0]
-    ++ [top | snd p == (Maze.height m - 1)]
-    ++ [Polygon [(0,0),(0,1),(1,1),(1,0)] | Maze.numWalls m p == 4]
+    ++ [right | fst p == Maze.width m - 1]
+    ++ [bottom | snd p == Maze.height m - 1]
+    ++ [top | snd p == 0]
+    {-++ [Polygon [(0,0),(0,1),(1,1),(1,0)] | boxedIn p]-}
     where
+        {-boxedIn :: Maze.Point -> Bool-}
+        {-boxedIn p =-}
+            {-(if fst p == 0 then 1 else 0)-}
+            {-+ (if fst p == Maze.width m - 1 then 1 else 0)-}
+            {-+ (if snd p == Maze.height m - 1 then 1 else 0)-}
+            {-+ (if snd p == 0 then 1 else 0)-}
+            {-+ Maze.numWalls m p == 4-}
         neighbor :: Maze.Direction -> Bool
         neighbor d = Maze.hasWall p (Maze.relativePoint d p) m
         bottom :: Picture
